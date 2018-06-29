@@ -25,7 +25,7 @@ import NIO
 /// to obtain an in-memory representation of a TLS certificate from a buffer of
 /// bytes or from a file path.
 public class OpenSSLCertificate {
-    internal let ref: UnsafeMutablePointer<X509>
+    internal let ref: OpaquePointer
 
     internal enum AlternativeName {
         case dnsName([UInt8])
@@ -37,7 +37,7 @@ public class OpenSSLCertificate {
         case ipv6(in6_addr)
     }
 
-    private init(withReference ref: UnsafeMutablePointer<X509>) {
+    private init(withReference ref: OpaquePointer) {
         self.ref = ref
     }
 
@@ -53,12 +53,12 @@ public class OpenSSLCertificate {
             fclose(fileObject)
         }
 
-        let x509: UnsafeMutablePointer<X509>?
+        let x509: OpaquePointer?
         switch format {
         case .pem:
-            x509 = PEM_read_X509(fileObject, nil, nil, nil)
+            x509 = PEM_read_X509(fileObject, nil, nil, nil).map(OpaquePointer.init)
         case .der:
-            x509 = d2i_X509_fp(fileObject, nil)
+            x509 = d2i_X509_fp(fileObject, nil).map(OpaquePointer.init)
         }
 
         if x509 == nil {
@@ -78,12 +78,12 @@ public class OpenSSLCertificate {
             BIO_free(bio)
         }
 
-        let x509: UnsafeMutablePointer<X509>?
+        let x509: OpaquePointer?
         switch format {
         case .pem:
-            x509 = PEM_read_bio_X509(bio, nil, nil, nil)
+            x509 = PEM_read_bio_X509(bio, nil, nil, nil).map(OpaquePointer.init)
         case .der:
-            x509 = d2i_X509_bio(bio, nil)
+            x509 = d2i_X509_bio(bio, nil).map(OpaquePointer.init)
         }
 
         if x509 == nil {
@@ -103,17 +103,38 @@ public class OpenSSLCertificate {
     ///
     /// In general, however, this function should be avoided in favour of one of the convenience
     /// initializers, which ensure that the lifetime of the `X509` object is better-managed.
-    static public func fromUnsafePointer(pointer: UnsafePointer<X509>) -> OpenSSLCertificate {
-        return OpenSSLCertificate(withReference: UnsafeMutablePointer(mutating: pointer))
+    ///
+    /// Please be aware that if you pass a pointer that is not to an X509, this method will not fail. Instead,
+    /// we'll happily carry on through as though it was all good, and then crash latter. You are responsible for
+    /// ensuring you pass the correct pointer type.
+    static public func fromUnsafePointer<T>(pointer: UnsafePointer<T>) -> OpenSSLCertificate {
+        return OpenSSLCertificate(withReference: .init(pointer))
+    }
+
+    /// Create an OpenSSLCertificate wrapping a pointer into OpenSSL.
+    ///
+    /// This is a function that should be avoided as much as possible because it plays poorly with
+    /// OpenSSL's reference-counted memory. This function does not increment the reference count for the `X509`
+    /// object here, nor does it duplicate it: it just takes ownership of the copy here. This object
+    /// **will** deallocate the underlying `X509` object when deinited, and so if you need to keep that
+    /// `X509` object alive you should call `X509_dup` before passing the pointer here.
+    ///
+    /// In general, however, this function should be avoided in favour of one of the convenience
+    /// initializers, which ensure that the lifetime of the `X509` object is better-managed.
+    ///
+    /// Please be aware that if you pass a pointer that is not to an X509, this method will not fail. Instead,
+    /// we'll happily carry on through as though it was all good, and then crash latter. You are responsible for
+    /// ensuring you pass the correct pointer type.
+    static public func fromUnsafePointer(pointer: OpaquePointer) -> OpenSSLCertificate {
+        return OpenSSLCertificate(withReference: pointer)
     }
 
     /// Get a sequence of the alternative names in the certificate.
     internal func subjectAlternativeNames() -> SubjectAltNameSequence? {
-        guard let sanExtension = X509_get_ext_d2i(ref, NID_subject_alt_name, nil, nil) else {
+        guard let sanExtension = X509_get_ext_d2i(.init(ref), NID_subject_alt_name, nil, nil) else {
             return nil
         }
-        let sanNames = sanExtension.assumingMemoryBound(to: stack_st_GENERAL_NAME.self)
-        return SubjectAltNameSequence(nameStack: sanNames)
+        return SubjectAltNameSequence(nameStack: .init(sanExtension))
     }
 
     /// Returns the commonName field in the Subject of this certificate.
@@ -123,7 +144,7 @@ public class OpenSSLCertificate {
     /// the *most significant* (i.e. last) instance of commonName in the subject.
     internal func commonName() -> [UInt8]? {
         // No subject name is unexpected, but it gives us an easy time of handling this at least.
-        guard let subjectName = X509_get_subject_name(ref) else {
+        guard let subjectName = X509_get_subject_name(.init(ref)) else {
             return nil
         }
 
@@ -156,18 +177,18 @@ public class OpenSSLCertificate {
         }
 
         let arr = [UInt8](UnsafeBufferPointer(start: namePtr, count: Int(stringLength)))
-        CRYPTO_free(namePtr)
+        CNIOOpenSSL_OPENSSL_free(namePtr)
         return arr
     }
 
     deinit {
-        X509_free(ref)
+        X509_free(.init(ref))
     }
 }
 
 extension OpenSSLCertificate: Equatable {
     public static func ==(lhs: OpenSSLCertificate, rhs: OpenSSLCertificate) -> Bool {
-        return X509_cmp(lhs.ref, rhs.ref) == 0
+        return X509_cmp(.init(lhs.ref), .init(rhs.ref)) == 0
     }
 }
 
@@ -176,13 +197,13 @@ extension OpenSSLCertificate: Equatable {
 internal class SubjectAltNameSequence: Sequence, IteratorProtocol {
     typealias Element = OpenSSLCertificate.AlternativeName
 
-    private let nameStack: UnsafeMutablePointer<stack_st_GENERAL_NAME>
+    private let nameStack: OpaquePointer
     private var nextIdx: Int32
     private let stackSize: Int32
 
-    init(nameStack: UnsafeMutablePointer<stack_st_GENERAL_NAME>) {
+    init(nameStack: OpaquePointer) {
         self.nameStack = nameStack
-        self.stackSize = CNIOOpenSSL_sk_GENERAL_NAME_num(nameStack)
+        self.stackSize = CNIOOpenSSL_sk_GENERAL_NAME_num(.init(nameStack))
         self.nextIdx = 0
     }
 
@@ -214,7 +235,7 @@ internal class SubjectAltNameSequence: Sequence, IteratorProtocol {
             return nil
         }
 
-        guard let name = CNIOOpenSSL_sk_GENERAL_NAME_value(nameStack, nextIdx) else {
+        guard let name = CNIOOpenSSL_sk_GENERAL_NAME_value(.init(nameStack), nextIdx) else {
             fatalError("Unexpected null pointer when unwrapping SAN value")
         }
 
@@ -241,6 +262,6 @@ internal class SubjectAltNameSequence: Sequence, IteratorProtocol {
     }
 
     deinit {
-        GENERAL_NAMES_free(nameStack)
+        GENERAL_NAMES_free(.init(nameStack))
     }
 }

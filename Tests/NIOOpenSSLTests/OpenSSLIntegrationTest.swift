@@ -305,7 +305,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         let fileBio = BIO_new_fp(fdopen(tempFile, "w+"), BIO_CLOSE)
         precondition(fileBio != nil)
 
-        let rc = PEM_write_bio_X509(fileBio, OpenSSLIntegrationTest.cert.ref)
+        let rc = PEM_write_bio_X509(fileBio, .init(OpenSSLIntegrationTest.cert.ref))
         BIO_free(fileBio)
         precondition(rc == 1)
         return try fn(fileName)

@@ -24,9 +24,9 @@ import CNIOOpenSSL
 /// to obtain an in-memory representation of a key from a buffer of
 /// bytes or from a file path.
 public class OpenSSLPrivateKey {
-    internal let ref: UnsafeMutablePointer<EVP_PKEY>
+    internal let ref: OpaquePointer
 
-    private init(withReference ref: UnsafeMutablePointer<EVP_PKEY>) {
+    private init(withReference ref: OpaquePointer) {
         self.ref = ref
     }
 
@@ -40,12 +40,12 @@ public class OpenSSLPrivateKey {
             fclose(fileObject)
         }
 
-        let key: UnsafeMutablePointer<EVP_PKEY>?
+        let key: OpaquePointer?
         switch format {
         case .pem:
-            key = PEM_read_PrivateKey(fileObject, nil, nil, nil)
+            key = PEM_read_PrivateKey(fileObject, nil, nil, nil).map(OpaquePointer.init)
         case .der:
-            key = d2i_PrivateKey_fp(fileObject, nil)
+            key = d2i_PrivateKey_fp(fileObject, nil).map(OpaquePointer.init)
         }
 
         if key == nil {
@@ -65,12 +65,12 @@ public class OpenSSLPrivateKey {
             BIO_free(bio)
         }
 
-        let key: UnsafeMutablePointer<EVP_PKEY>?
+        let key: OpaquePointer?
         switch format {
         case .pem:
-            key = PEM_read_bio_PrivateKey(bio, nil, nil, nil)
+            key = PEM_read_bio_PrivateKey(bio, nil, nil, nil).map(OpaquePointer.init)
         case .der:
-            key = d2i_PrivateKey_bio(bio, nil)
+            key = d2i_PrivateKey_bio(bio, nil).map(OpaquePointer.init)
         }
 
         if key == nil {
@@ -90,17 +90,38 @@ public class OpenSSLPrivateKey {
     ///
     /// In general, however, this function should be avoided in favour of one of the convenience
     /// initializers, which ensure that the lifetime of the X509 object is better-managed.
-    static public func fromUnsafePointer(pointer: UnsafePointer<EVP_PKEY>) -> OpenSSLPrivateKey {
-        return OpenSSLPrivateKey(withReference: UnsafeMutablePointer(mutating: pointer))
+    ///
+    /// Please be aware that if you pass a pointer that is not to an EVP_PKEY, this method will not fail. Instead,
+    /// we'll happily carry on through as though it was all good, and then crash latter. You are responsible for
+    /// ensuring you pass the correct pointer type.
+    static public func fromUnsafePointer<T>(pointer: UnsafePointer<T>) -> OpenSSLPrivateKey {
+        return OpenSSLPrivateKey(withReference: .init(pointer))
+    }
+
+    /// Create an OpenSSLPrivateKey wrapping a pointer into OpenSSL.
+    ///
+    /// This is a function that should be avoided as much as possible because it plays poorly with
+    /// OpenSSL's reference-counted memory. This function does not increment the reference count for the EVP_PKEY
+    /// object here, nor does it duplicate it: it just takes ownership of the copy here. This object
+    /// **will** deallocate the underlying EVP_PKEY object when deinited, and so if you need to keep that
+    /// EVP_PKEY object alive you should call X509_dup before passing the pointer here.
+    ///
+    /// In general, however, this function should be avoided in favour of one of the convenience
+    /// initializers, which ensure that the lifetime of the X509 object is better-managed.
+    ///
+    /// Please be aware that if the pointer is not to an EVP_PKEY, this method will not fail. Instead, we'll
+    /// discover later when we try to use this method. You are responsible for the type safety of your code here.
+    static public func fromUnsafePointer(pointer: OpaquePointer) -> OpenSSLPrivateKey {
+        return OpenSSLPrivateKey(withReference: pointer)
     }
 
     deinit {
-        EVP_PKEY_free(ref)
+        EVP_PKEY_free(.init(ref))
     }
 }
 
 extension OpenSSLPrivateKey: Equatable {
     public static func ==(lhs: OpenSSLPrivateKey, rhs: OpenSSLPrivateKey) -> Bool {
-        return EVP_PKEY_cmp(lhs.ref, rhs.ref) != 0
+        return EVP_PKEY_cmp(.init(lhs.ref), .init(rhs.ref)) != 0
     }
 }

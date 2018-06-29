@@ -40,11 +40,41 @@ static inline int CNIOOpenSSL_SSL_set_tlsext_host_name(SSL *ssl, const char *nam
     return SSL_set_tlsext_host_name(ssl, name);
 }
 
+/// Initialize OpenSSL.
+///
+/// This method is NOT THREAD SAFE. Please only call it from inside a lock or a pthread_once.
+void CNIOOpenSSL_InitializeOpenSSL(void);
+
 static inline const unsigned char *CNIOOpenSSL_ASN1_STRING_get0_data(ASN1_STRING *x) {
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
     return ASN1_STRING_data(x);
 #else
     return ASN1_STRING_get0_data(x);
+#endif
+}
+
+static inline const SSL_METHOD *CNIOOpenSSL_TLS_Method(void) {
+    #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+    return SSLv23_method();
+    #else
+    return TLS_method();
+    #endif
+}
+
+
+/// A no-op verify callback, for use from Swift.
+static inline int CNIOOpenSSL_noop_verify_callback(int preverify_ok, X509_STORE_CTX *context) {
+    return preverify_ok;
+}
+
+/// A small helper to allow querying whether we were build against LibreSSL or not.
+///
+/// Returns 1 if we built against LibreSSL, 0 if we did not.
+static inline int CNIOOpenSSL_is_libressl(void) {
+#if defined(LIBRESSL_VERSION_NUMBER)
+    return 1;
+#else
+    return 0;
 #endif
 }
 
@@ -66,6 +96,30 @@ static inline int CNIOOpenSSL_SSL_CTX_set_app_data(SSL_CTX *ctx, void *arg) {
 
 static inline void *CNIOOpenSSL_SSL_CTX_get_app_data(SSL_CTX *ctx) {
     return SSL_CTX_get_app_data(ctx);
+}
+
+static inline long CNIOOpenSSL_SSL_CTX_set_mode(SSL_CTX *ctx, long mode) {
+    return SSL_CTX_set_mode(ctx, mode);
+}
+
+static inline long CNIOOpenSSL_SSL_CTX_set_options(SSL_CTX *ctx, long options) {
+    return SSL_CTX_set_options(ctx, options);
+}
+
+static inline void CNIOOpenSSL_OPENSSL_free(void *addr) {
+    OPENSSL_free(addr);
+}
+
+static inline int CNIOOpenSSL_X509_set_notBefore(X509 *x, const ASN1_TIME *tm) {
+    return X509_set_notBefore(x, tm);
+}
+
+static inline int CNIOOpenSSL_X509_set_notAfter(X509 *x, const ASN1_TIME *tm) {
+    return X509_set_notAfter(x, tm);
+}
+
+static inline unsigned long CNIOOpenSSL_OpenSSL_version_num(void) {
+    return SSLeay();
 }
 
 // We bring this typedef forward in case it's not present in the version of OpenSSL
