@@ -86,9 +86,9 @@ private func opensslLockingCallback(mode: Int32, index: Int32, callingFile: Unsa
 }
 
 private func getThreadID() -> UInt {
-    #if os(Linux)
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(Android)
+    return UInt(bitPattern: pthread_self())
+#else // Linux
     return UInt(pthread_self())
-    #else  // Darwin
-    return UInt(bitPattern:pthread_self())
-    #endif
+#endif
 }
