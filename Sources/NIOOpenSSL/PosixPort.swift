@@ -22,7 +22,13 @@
 // can lift anything missing from there and move it over without change.
 import NIO
 
-private let sysFopen: @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafeMutablePointer<FILE>? = fopen
+#if os(Android)
+typealias FILE_POINTER = OpaquePointer
+#else
+typealias FILE_POINTER = UnsafeMutablePointer<FILE>
+#endif
+
+private let sysFopen: @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> FILE_POINTER? = fopen
 private let sysMlock: @convention(c) (UnsafeRawPointer?, size_t) -> CInt = mlock
 private let sysMunlock: @convention(c) (UnsafeRawPointer?, size_t) -> CInt = munlock
 
@@ -80,7 +86,7 @@ internal func wrapErrorIsNullReturnCall<T>(where function: StaticString = #funct
 // MARK:- Our functions
 internal enum Posix {
     @inline(never)
-    public static func fopen(file: UnsafePointer<CChar>, mode: UnsafePointer<CChar>) throws -> UnsafeMutablePointer<FILE> {
+    public static func fopen(file: UnsafePointer<CChar>, mode: UnsafePointer<CChar>) throws -> FILE_POINTER {
         return try wrapErrorIsNullReturnCall {
             sysFopen(file, mode)
         }
