@@ -35,7 +35,7 @@ let package = Package(
 MANGLE_END */
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
+        .package(url: "https://github.com/readdle/swift-nio.git", .branch("android-swift5")),
     ],
     targets: [
         .target(name: "CNIOBoringSSL"),
@@ -44,7 +44,9 @@ MANGLE_END */
                 dependencies: ["NIO", "NIOConcurrencyHelpers", "CNIOBoringSSL", "CNIOBoringSSLShims", "NIOTLS"]),
         .target(name: "NIOTLSServer", dependencies: ["NIO", "NIOSSL", "NIOConcurrencyHelpers"]),
         .target(name: "NIOSSLHTTP1Client", dependencies: ["NIO", "NIOHTTP1", "NIOSSL", "NIOFoundationCompat"]),
-        .testTarget(name: "NIOSSLTests", dependencies: ["NIOTLS", "NIOSSL"]),
+        // DRUK: temporary disable
+        //.testTarget(name: "NIOSSLTests", dependencies: ["NIOTLS", "NIOSSL"]),
     ],
+    cLanguageStandard: .c11,
     cxxLanguageStandard: .cxx11
 )
