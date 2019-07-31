@@ -22,7 +22,7 @@ let package = Package(
         .executable(name: "NIOTLSServer", targets: ["NIOTLSServer"]),
     ],
     dependencies: [
-    .package(url: "https://github.com/apple/swift-nio.git", from: "1.12.0"),
+    .package(url: "https://github.com/readdle/swift-nio.git", .branch("1.14.1-android")),
     .package(url: "https://github.com/apple/swift-nio-ssl-support.git", from: "1.0.0"),
     ],
     targets: [
