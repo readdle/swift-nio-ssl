@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import OpenSSL
 import CNIOOpenSSL
 import NIOTLS
 
