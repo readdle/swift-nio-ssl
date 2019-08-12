@@ -17,7 +17,7 @@ import NIO
 @testable import NIOOpenSSL
 
 func connectInMemory(client: EmbeddedChannel, server: EmbeddedChannel) throws {
-    let addr = try assertNoThrowWithValue(SocketAddress(unixDomainSocketPath: "/tmp/whatever2"))
+    let addr = try assertNoThrowWithValue(SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever2"))
     let connectFuture = client.connect(to: addr)
     server.pipeline.fireChannelActive()
     XCTAssertNoThrow(try interactInMemory(clientChannel: client, serverChannel: server))

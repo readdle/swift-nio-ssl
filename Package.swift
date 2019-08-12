@@ -23,7 +23,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/readdle/swift-nio.git", .branch("1.14.1-android")),
-        .package(url: "https://github.com/readdle/swift-openssl-prebuilt.git", .exact("0.0.3"))
+        .package(url: "https://github.com/readdle/swift-openssl-prebuilt.git", .exact("1.0.0"))
     ],
     targets: [
         .target(name: "CNIOOpenSSL"),

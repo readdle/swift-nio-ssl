@@ -103,8 +103,14 @@ i5PCcPYi39q101UIxV/WokS0mqHx/XuTYTwhWYd/C49OnM8MLZOUJd8w0VvS0ItY
 -----END CERTIFICATE-----
 """
 
-func makeTemporaryFile(fileExtension: String = "") -> String {
-    let template = "/tmp/niotestXXXXXXX\(fileExtension)"
+#if os(Android)
+let tmpFolderPath = "/data/local/tmp"
+#else 
+let tmpFolderPath = "/tmp"
+#endif
+
+func makeTemporaryFile(fileExtension: String = "") -> String { 
+    let template = "\(tmpFolderPath)/niotestXXXXXXX\(fileExtension)"
     var templateBytes = template.utf8 + [0]
     let fd = templateBytes.withUnsafeMutableBufferPointer { ptr in
         ptr.baseAddress!.withMemoryRebound(to: Int8.self, capacity: ptr.count) { (ptr: UnsafeMutablePointer<Int8>) in

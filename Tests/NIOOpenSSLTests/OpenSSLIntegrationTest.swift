@@ -17,7 +17,7 @@ import CNIOOpenSSL
 import NIO
 @testable import NIOOpenSSL
 import NIOTLS
-import class Foundation.Process
+//import class Foundation.Process
 
 public func assertNoThrowWithValue<T>(_ body: @autoclosure () throws -> T, defaultValue: T? = nil, file: StaticString = #file, line: UInt = #line) throws -> T {
     do {
@@ -668,7 +668,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         try channel.pipeline.add(handler: OpenSSLClientHandler(context: ctx)).wait()
 
         // Start by initiating the handshake.
-        try channel.connect(to: SocketAddress(unixDomainSocketPath: "/tmp/doesntmatter")).wait()
+        try channel.connect(to: SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/doesntmatter")).wait()
 
         // Now call close. This should immediately close, satisfying the promise.
         let closePromise: EventLoopPromise<Void> = channel.eventLoop.newPromise()
@@ -815,7 +815,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         try serverChannel.pipeline.add(handler: try OpenSSLServerHandler(context: ctx)).wait()
         try clientChannel.pipeline.add(handler: try OpenSSLClientHandler(context: ctx)).wait()
 
-        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "/tmp/whatever")
+        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
@@ -901,7 +901,7 @@ class OpenSSLIntegrationTest: XCTestCase {
     func testChecksTrustStoreOnDisk() throws {
         let serverCtx = try configuredSSLContext()
         let clientConfig = TLSConfiguration.forClient(certificateVerification: .noHostnameVerification,
-                                                      trustRoots: .file("/tmp"),
+                                                      trustRoots: .file("\(tmpFolderPath)"),
                                                       certificateChain: [.certificate(OpenSSLIntegrationTest.cert)],
                                                       privateKey: .privateKey(OpenSSLIntegrationTest.key))
         let clientCtx = try assertNoThrowWithValue(SSLContext(configuration: clientConfig))
@@ -952,7 +952,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         try serverChannel.pipeline.add(handler: try OpenSSLServerHandler(context: ctx)).wait()
         try clientChannel.pipeline.add(handler: try OpenSSLClientHandler(context: ctx)).wait()
 
-        let addr = try SocketAddress(unixDomainSocketPath: "/tmp/whatever2")
+        let addr = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever2")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
@@ -1041,7 +1041,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         try serverChannel.pipeline.add(handler: try OpenSSLServerHandler(context: ctx)).wait()
         try clientChannel.pipeline.add(handler: try OpenSSLClientHandler(context: ctx)).wait()
 
-        let addr = try SocketAddress(unixDomainSocketPath: "/tmp/whatever2")
+        let addr = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever2")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
@@ -1129,7 +1129,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         XCTAssertNoThrow(try clientChannel.pipeline.add(handler: try OpenSSLClientHandler(context: ctx)).wait())
 
         // Connect
-        let addr = try assertNoThrowWithValue(SocketAddress(unixDomainSocketPath: "/tmp/whatever2"))
+        let addr = try assertNoThrowWithValue(SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever2"))
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         XCTAssertNoThrow(try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel))
@@ -1264,7 +1264,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         XCTAssertNoThrow(try clientChannel.pipeline.add(handler: handshakeHandler).wait())
 
         // Connect. This should lead to a completed handshake.
-        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "/tmp/whatever")
+        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
@@ -1309,7 +1309,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         }
 
         // Connect. This should lead to a completed handshake.
-        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "/tmp/whatever")
+        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
@@ -1359,7 +1359,7 @@ class OpenSSLIntegrationTest: XCTestCase {
         XCTAssertNoThrow(try clientChannel.pipeline.add(handler: handshakeHandler).wait())
 
         // Connect. This should lead to a completed handshake.
-        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "/tmp/whatever")
+        let addr: SocketAddress = try SocketAddress(unixDomainSocketPath: "\(tmpFolderPath)/whatever")
         let connectFuture = clientChannel.connect(to: addr)
         serverChannel.pipeline.fireChannelActive()
         try interactInMemory(clientChannel: clientChannel, serverChannel: serverChannel)
